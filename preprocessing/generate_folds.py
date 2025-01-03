@@ -53,14 +53,16 @@ def parse_args():
     args = parser.parse_args()
 
     return args
-
-
+root_dir = os.getcwd()
+n_splits = 16
+out = 'folds.csv'
+seed=0
 def main():
     args = parse_args()
     ori_fakes = get_original_with_fakes(args.root_dir)
     sz = 50 // args.n_splits
     folds = []
-    for fold in range(args.n_splits):
+    for fold in range(args.n_splits): # split 50 into n_splits folds and get their range but for last one, 50
         folds.append(list(range(sz * fold, sz * fold + sz if fold < args.n_splits - 1 else 50)))
     print(folds)
     video_fold = {}
@@ -73,7 +75,7 @@ def main():
                         metadata = json.load(metadata_json)
 
                     for k, v in metadata.items():
-                        fold = None
+                        fold = None # we are using train test split instead of k fold
                         for i, fold_dirs in enumerate(folds):
                             if part in fold_dirs:
                                 fold = i

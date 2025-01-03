@@ -47,7 +47,6 @@ class FacenetDetector(VideoFaceDetector):
 
 
 class VideoDataset(Dataset):
-
     def __init__(self, videos) -> None:
         super().__init__()
         self.videos = videos

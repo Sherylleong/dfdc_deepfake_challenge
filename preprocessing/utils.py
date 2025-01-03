@@ -49,3 +49,7 @@ def get_originals_and_fakes(root_dir):
                 originals.append(k[:-4])
 
     return originals, fakes
+
+root_dir = os.path.join(os.getcwd(), 'dfdc_train_part_0')
+print(root_dir)
+print(get_originals_and_fakes(root_dir))

@@ -9,14 +9,17 @@ import numpy as np
 import pandas as pd
 import skimage.draw
 from albumentations import ImageCompression, OneOf, GaussianBlur, Blur
-from albumentations.augmentations.functional import image_compression, rot90
-from albumentations.pytorch.functional import img_to_tensor
+from albumentations.augmentations.functional import image_compression
+
+from albumentations.augmentations.geometric.functional import rot90
+from albumentations.pytorch.transforms import ToTensorV2 as img_to_tensor
+#from albumentations.pytorch.functional import img_to_tensor
 from scipy.ndimage import binary_erosion, binary_dilation
 from skimage import measure
 from torch.utils.data import Dataset
 import dlib
 
-from training.datasets.validation_set import PUBLIC_SET
+# from training.datasets.validation_set import PUBLIC_SET
 
 
 def prepare_bit_masks(mask):
@@ -53,11 +56,11 @@ predictor = dlib.shape_predictor('libs/shape_predictor_68_face_landmarks.dat')
 
 def blackout_convex_hull(img):
     try:
-        rect = detector(img)[0]
-        sp = predictor(img, rect)
+        rect = detector(img)[0] # find the first detected face in the image
+        sp = predictor(img, rect) # predict landmarks
         landmarks = np.array([[p.x, p.y] for p in sp.parts()])
-        outline = landmarks[[*range(17), *range(26, 16, -1)]]
-        Y, X = skimage.draw.polygon(outline[:, 1], outline[:, 0])
+        outline = landmarks[[*range(17), *range(26, 16, -1)]] #  0 to 16 (jawline) and 26 to 17 (forehead) 
+        Y, X = skimage.draw.polygon(outline[:, 1], outline[:, 0]) # use to draw polygon
         cropped_img = np.zeros(img.shape[:2], dtype=np.uint8)
         cropped_img[Y, X] = 1
         # if random.random() > 0.5:
@@ -65,10 +68,10 @@ def blackout_convex_hull(img):
         #     #leave only face
         #     return img
 
-        y, x = measure.centroid(cropped_img)
+        y, x = measure.centroid(cropped_img) # determine centre point of face mask
         y = int(y)
         x = int(x)
-        first = random.random() > 0.5
+        first = random.random() > 0.5 # A random decision is made to either blackout the top/bottom or left/right half of the face area
         if random.random() > 0.5:
             if first:
                 cropped_img[:y, :] = 0
@@ -80,7 +83,7 @@ def blackout_convex_hull(img):
             else:
                 cropped_img[:, x:] = 0
 
-        img[cropped_img > 0] = 0
+        img[cropped_img > 0] = 0 # apply mask
     except Exception as e:
         pass
 
@@ -91,11 +94,11 @@ def dist(p1, p2):
 
 def remove_eyes(image, landmarks):
     image = image.copy()
-    (x1, y1), (x2, y2) = landmarks[:2]
+    (x1, y1), (x2, y2) = landmarks[:2] # first 2 landmarks - eye position
     mask = np.zeros_like(image[..., 0])
-    line = cv2.line(mask, (x1, y1), (x2, y2), color=(1), thickness=2)
-    w = dist((x1, y1), (x2, y2))
-    dilation = int(w // 4)
+    line = cv2.line(mask, (x1, y1), (x2, y2), color=(1), thickness=2) # A line is drawn on the mask between the two eye landmarks
+    w = dist((x1, y1), (x2, y2)) # distance between the two eye landmarks
+    dilation = int(w // 4) # The width of the line segment is used to determine how much to dilate the line.
     line = binary_dilation(line, iterations=dilation)
     image[line, :] = 0
     return image
@@ -103,12 +106,12 @@ def remove_eyes(image, landmarks):
 
 def remove_nose(image, landmarks):
     image = image.copy()
-    (x1, y1), (x2, y2) = landmarks[:2]
-    x3, y3 = landmarks[2]
+    (x1, y1), (x2, y2) = landmarks[:2] # eyes
+    x3, y3 = landmarks[2] # nose tip
     mask = np.zeros_like(image[..., 0])
     x4 = int((x1 + x2) / 2)
-    y4 = int((y1 + y2) / 2)
-    line = cv2.line(mask, (x3, y3), (x4, y4), color=(1), thickness=2)
+    y4 = int((y1 + y2) / 2) # eyes midpoint
+    line = cv2.line(mask, (x3, y3), (x4, y4), color=(1), thickness=2) # from eyes midpoint to nose tip
     w = dist((x1, y1), (x2, y2))
     dilation = int(w // 4)
     line = binary_dilation(line, iterations=dilation)
@@ -118,7 +121,7 @@ def remove_nose(image, landmarks):
 
 def remove_mouth(image, landmarks):
     image = image.copy()
-    (x1, y1), (x2, y2) = landmarks[-2:]
+    (x1, y1), (x2, y2) = landmarks[-2:] # eyes distance
     mask = np.zeros_like(image[..., 0])
     line = cv2.line(mask, (x1, y1), (x2, y2), color=(1), thickness=2)
     w = dist((x1, y1), (x2, y2))
@@ -141,7 +144,7 @@ def remove_landmark(image, landmarks):
 def change_padding(image, part=5):
     h, w = image.shape[:2]
     # original padding was done with 1/3 from each side, too much
-    pad_h = int(((3 / 5) * h) / part)
+    pad_h = int(((3 / 5) * h) / part) # 8/24 to 3/25
     pad_w = int(((3 / 5) * w) / part)
     image = image[h // 5 - pad_h:-h // 5 + pad_h, w // 5 - pad_w:-w // 5 + pad_w]
     return image
@@ -156,7 +159,7 @@ def blackout_random(image, mask, label):
     while current_try < tries:
         first = random.random() < 0.5
         if random.random() < 0.5:
-            pivot = random.randint(h // 2 - h // 5, h // 2 + h // 5)
+            pivot = random.randint(h // 2 - h // 5, h // 2 + h // 5) # random pivot somewhere around the midpoint
             bitmap_msk = np.ones_like(binary_mask)
             if first:
                 bitmap_msk[:pivot, :] = 0
@@ -170,6 +173,7 @@ def blackout_random(image, mask, label):
             else:
                 bitmap_msk[:, pivot:] = 0
 
+# what is label
         if label < 0.5 and np.count_nonzero(image * np.expand_dims(bitmap_msk, axis=-1)) / 3 > (h * w) / 5 \
                 or np.count_nonzero(binary_mask * bitmap_msk) > 40:
             mask *= bitmap_msk
@@ -183,34 +187,34 @@ def blend_original(img):
     img = img.copy()
     h, w = img.shape[:2]
     rect = detector(img)
-    if len(rect) == 0:
+    if len(rect) == 0: # no face
         return img
     else:
-        rect = rect[0]
-    sp = predictor(img, rect)
+        rect = rect[0] # first face
+    sp = predictor(img, rect) # landmarks
     landmarks = np.array([[p.x, p.y] for p in sp.parts()])
-    outline = landmarks[[*range(17), *range(26, 16, -1)]]
-    Y, X = skimage.draw.polygon(outline[:, 1], outline[:, 0])
-    raw_mask = np.zeros(img.shape[:2], dtype=np.uint8)
-    raw_mask[Y, X] = 1
-    face = img * np.expand_dims(raw_mask, -1)
+    outline = landmarks[[*range(17), *range(26, 16, -1)]] # outline of face outer boundary
+    Y, X = skimage.draw.polygon(outline[:, 1], outline[:, 0]) # pixels inside face
+    raw_mask = np.zeros(img.shape[:2], dtype=np.uint8) 
+    raw_mask[Y, X] = 1 # only the face
+    face = img * np.expand_dims(raw_mask, -1) # apply mask (-1 is to add the colour channel)
 
     # add warping
-    h1 = random.randint(h - h // 2, h + h // 2)
+    h1 = random.randint(h - h // 2, h + h // 2) # variation in size of face image
     w1 = random.randint(w - w // 2, w + w // 2)
-    while abs(h1 - h) < h // 3 and abs(w1 - w) < w // 3:
+    while abs(h1 - h) < h // 3 and abs(w1 - w) < w // 3: # ensure new dimensions not too close to ori
         h1 = random.randint(h - h // 2, h + h // 2)
         w1 = random.randint(w - w // 2, w + w // 2)
-    face = cv2.resize(face, (w1, h1), interpolation=random.choice([cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_CUBIC]))
-    face = cv2.resize(face, (w, h), interpolation=random.choice([cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_CUBIC]))
+    face = cv2.resize(face, (w1, h1), interpolation=random.choice([cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_CUBIC])) # resize with random interpolation
+    face = cv2.resize(face, (w, h), interpolation=random.choice([cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_CUBIC])) # resize back face
 
-    raw_mask = binary_erosion(raw_mask, iterations=random.randint(4, 10))
-    img[raw_mask, :] = face[raw_mask, :]
+    raw_mask = binary_erosion(raw_mask, iterations=random.randint(4, 10)) # reduces the size of the mask to help blend more naturally with background
+    img[raw_mask, :] = face[raw_mask, :] # blends the warped face back into the original image
     if random.random() < 0.2:
-        img = OneOf([GaussianBlur(), Blur()], p=0.5)(image=img)["image"]
+        img = OneOf([GaussianBlur(), Blur()], p=0.5)(image=img)["image"] # blur effect
     # image compression
     if random.random() < 0.5:
-        img = ImageCompression(quality_lower=40, quality_upper=95)(image=img)["image"]
+        img = ImageCompression(quality_lower=40, quality_upper=95)(image=img)["image"] # 40-95 image compression
     return img
 
 
@@ -254,14 +258,14 @@ class DeepFakeClassifierDataset(Dataset):
             video, img_file, label, ori_video, frame, fold = self.data[index]
             try:
                 if self.mode == "train":
-                    label = np.clip(label, self.label_smoothing, 1 - self.label_smoothing)
+                    label = np.clip(label, self.label_smoothing, 1 - self.label_smoothing) # smooth label so not overconfident
                 img_path = os.path.join(self.data_root, self.crops_dir, video, img_file)
                 image = cv2.imread(img_path, cv2.IMREAD_COLOR)
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 mask = np.zeros(image.shape[:2], dtype=np.uint8)
                 diff_path = os.path.join(self.data_root, "diffs", video, img_file[:-4] + "_diff.png")
                 try:
-                    msk = cv2.imread(diff_path, cv2.IMREAD_GRAYSCALE)
+                    msk = cv2.imread(diff_path, cv2.IMREAD_GRAYSCALE) # diff mask
                     if msk is not None:
                         mask = msk
                 except:
