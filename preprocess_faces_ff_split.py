@@ -43,10 +43,10 @@ plt.rc('xtick', labelsize=10)
 plt.rc('ytick', labelsize=10)
 
 
-device = 'cuda'
+device = 'cuda' 
 
 
-DEEPFAKE_TYPE = 'FaceSwap'
+DEEPFAKE_TYPE = 'Deepfakes'
 
 ORI_FOLDER = r'original_sequences\youtube\c23\videos'
 MANIP_FOLDER = fr'manipulated_sequences\{DEEPFAKE_TYPE}\c23\videos'
@@ -285,8 +285,8 @@ if __name__ == '__main__':
 
     source_folder = MANIP_VIDEOS_FOLDER
     to_folder = MANIP_FACES_FOLDER
-    IMAGE_TYPE = 'manipulated_sequences'
-    boxes_folder = os.path.join(SOURCE_FOLDER, 'extracted_boxes', MANIP_BOXES_FOLDER)
+    boxes_folder = MANIP_BOXES_FOLDER 
+    boxes_folder = os.path.join(SOURCE_FOLDER, 'extracted_boxes', boxes_folder)
 
     out_dir = os.path.join(SOURCE_FOLDER, 'crops', to_folder)
 

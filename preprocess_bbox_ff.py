@@ -47,7 +47,7 @@ device = 'cuda'
 
 SOURCE_FOLDER= r"D:\FF"
 
-DEEPFAKE_TYPE = 'NeuralTextures'
+DEEPFAKE_TYPE = 'FaceSwap'
 ORI_VIDEOS_FOLDER = fr'original_sequences\youtube\c23\videos'
 MANIP_VIDEOS_FOLDER = fr'manipulated_sequences\{DEEPFAKE_TYPE}\c23\videos'
 ORI_BOXES_FOLDER = fr'original_sequences'
@@ -154,8 +154,8 @@ if __name__ == '__main__':
     print(get_train_val_test_splits(SOURCE_FOLDER))
     
 
-    source_folder = MANIP_VIDEOS_FOLDER
-    to_folder = MANIP_BOXES_FOLDER
+    source_folder = ORI_VIDEOS_FOLDER
+    to_folder = ORI_BOXES_FOLDER
 
     out_dir = os.path.join(SOURCE_FOLDER, 'extracted_boxes', to_folder)
 
