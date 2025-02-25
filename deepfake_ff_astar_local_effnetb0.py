@@ -32,7 +32,7 @@ from torch.utils.data import WeightedRandomSampler
 import matplotlib.pyplot as plt 
 
 
-DEEPFAKE_TYPE = 'FaceShifter'
+DEEPFAKE_TYPE = 'NeuralTextures'
 SOURCE_FOLDER= r"D:\FF"
 TRAIN_FOLDER = fr'D:\FF\crops\{DEEPFAKE_TYPE}\train' 
 VAL_FOLDER = fr'D:\FF\crops\{DEEPFAKE_TYPE}\val' 
@@ -68,7 +68,7 @@ class ImageTransform:
 EARLY STOPPER
 '''
 PATIENCE = 5
-MODEL_NAME = f'ff_effnet0_1fc_{DEEPFAKE_TYPE}'
+MODEL_NAME = f'ff_effnet0_1fc_{DEEPFAKE_TYPE}_10epoch'
 
 def save_checkpoint(model, optimizer, epoch, history, filename=MODEL_NAME):
     checkpoint = {
@@ -105,7 +105,7 @@ class EarlyStopper:
 '''
 TRAINING
 '''
-EPOCHS = 100
+EPOCHS = 10
 LR = 0.001
 
 def train(epochs, optimizer, model, train_loader, val_loader, earlystopper):

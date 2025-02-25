@@ -33,7 +33,7 @@ from torch.utils.data import WeightedRandomSampler
 import matplotlib.pyplot as plt 
 
 
-DEEPFAKE_TYPE = 'NeuralTextures'
+DEEPFAKE_TYPE = 'Deepfakes'
 SOURCE_FOLDER= r"D:\FF"
 TRAIN_FOLDER = fr'D:\FF\crops\{DEEPFAKE_TYPE}\train' 
 VAL_FOLDER = fr'D:\FF\crops\{DEEPFAKE_TYPE}\val' 
@@ -43,7 +43,7 @@ SAVE_PATH = fr'models\{DEEPFAKE_TYPE}'
 
 IMG_SIZE = 299
 BATCH_SIZE = 64
-EPOCHS = 100
+EPOCHS = 10
 
 mean = (0.485, 0.456, 0.406)
 std = (0.229, 0.224, 0.225)
@@ -69,7 +69,7 @@ class ImageTransform:
 EARLY STOPPER
 '''
 PATIENCE = 5
-MODEL_NAME = f'ff_xceptionnet_1fc_{DEEPFAKE_TYPE}'
+MODEL_NAME = f'ff_xceptionnet_1fc_{DEEPFAKE_TYPE}_10epoch'
 
 def save_checkpoint(model, optimizer, epoch, history, filename=MODEL_NAME):
     checkpoint = {
@@ -106,7 +106,7 @@ class EarlyStopper:
 '''
 TRAINING
 '''
-EPOCHS = 100
+EPOCHS = 10
 LR = 0.001
 
 from torch.amp import autocast, GradScaler

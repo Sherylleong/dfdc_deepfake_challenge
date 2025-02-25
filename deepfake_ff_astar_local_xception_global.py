@@ -40,7 +40,7 @@ deepfake_types = ['Deepfakes', 'Face2Face', 'FaceShifter', 'FaceSwap', 'NeuralTe
 
 IMG_SIZE = 299
 BATCH_SIZE = 64
-EPOCHS = 100
+EPOCHS = 10
 
 mean = (0.485, 0.456, 0.406)
 std = (0.229, 0.224, 0.225)
@@ -92,7 +92,7 @@ class ImageTransform:
 EARLY STOPPER
 '''
 PATIENCE = 5
-MODEL_NAME = f'ff_xceptionnet_global'
+MODEL_NAME = f'ff_xceptionnet_global_10epoch'
 
 def save_checkpoint(model, optimizer, epoch, history, filename=MODEL_NAME):
     checkpoint = {
@@ -129,7 +129,6 @@ class EarlyStopper:
 '''
 TRAINING
 '''
-EPOCHS = 100
 LR = 0.001
 
 from torch.amp import autocast, GradScaler
@@ -203,7 +202,69 @@ def train(epochs, optimizer, model, train_loader, val_loader, earlystopper):
         
     return train_loss_history, val_loss_history, train_accuracy_history, val_accuracy_history
 
+def trainepoch(epochs, optimizer, model, train_loader, val_loader, earlystopper):
+    print('train start')
+    train_loss_history = []
+    train_accuracy_history = []
+    val_loss_history = []
+    val_accuracy_history = []
+    for epoch in range(epochs): 
 
+        running_loss = 0
+        correct = 0
+        total = 0
+        model.train()
+        for data, labels in train_loader:
+            data = data.squeeze(0)
+            labels = labels.squeeze(0)
+            labels = labels.to(device).float()
+            data = data.to(device)
+            optimizer.zero_grad()  # clear previous gradients
+
+            #data = data.to(device).float()
+            outputs = model(data).squeeze()
+            losses = loss_fn(outputs, labels)
+            running_loss += losses.item()  # accumulate loss
+            
+            losses.backward()
+            optimizer.step()
+            predicted   = (torch.sigmoid(outputs) >= 0.5).float() # calculate if label is 0 or 1
+            correct += (predicted == labels).sum().item() 
+            total += labels.size(0)
+            train_loss_history.append(losses.item())
+        print('train end')
+
+        average_train_loss = running_loss / total
+        average_train_accuracy = correct / total
+        train_loss_history.append(average_train_loss)
+        train_accuracy_history.append(average_train_accuracy)
+
+        model.eval()
+        running_loss = 0
+        correct = 0
+        total = 0 
+        for data, labels in val_loader:
+            data = data.squeeze(0)
+            labels = labels.squeeze(0)
+            labels = labels.to(device).float()
+            data = data.to(device).float()
+
+            outputs = model(data).squeeze()
+            losses = loss_fn(outputs, labels)
+            running_loss += losses.item()  # accumulate loss
+            predicted = (torch.sigmoid(outputs) >= 0.5).float() # calculate if label is 0 or 1
+            correct += (predicted == labels).sum().item() 
+            total += labels.size(0)
+        print('val end')
+        average_val_loss = running_loss / total
+        average_val_accuracy = correct / total
+        val_loss_history.append(average_val_loss)
+        val_accuracy_history.append(average_val_accuracy)
+        print(f"Epoch [{epoch}/{epochs}], Train Loss: {average_train_loss:.5f}, Train Accuracy: {average_train_accuracy:.5f}, Val Loss: {average_val_loss:.5f}, Val Accuracy: {average_val_accuracy:.5f}")
+        histories = {'train_acc': train_accuracy_history, 'val_acc': val_accuracy_history, 'train_loss': train_loss_history, 'val_loss':  val_loss_history}
+        save_checkpoint(model, optimizer, epoch, histories)
+        
+    return train_loss_history, val_loss_history, train_accuracy_history, val_accuracy_history
 
 if __name__ == '__main__':
     device = 'cuda' 
@@ -224,5 +285,5 @@ if __name__ == '__main__':
     loss_fn = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     train_loader, val_loader = load_full_dataset()
-    train_loss_history, val_loss_history, train_accuracy_history, val_accuracy_history = train(EPOCHS, optimizer, model, train_loader, val_loader, earlystopper)
+    train_loss_history, val_loss_history, train_accuracy_history, val_accuracy_history = trainepoch(EPOCHS, optimizer, model, train_loader, val_loader, earlystopper)
 
